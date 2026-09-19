@@ -5,7 +5,13 @@ import path from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
+// GitHub Pages serves the site under /<repo>/ — the Pages workflow sets
+// BASE_PATH=/59oomat/ so built asset URLs resolve there. Local dev, the
+// Freebuff preview and Capacitor native builds stay at "/" (no env var set).
+const basePath = process.env.BASE_PATH ?? "/";
+
 export default defineConfig({
+  base: basePath,
   plugins: [react(), vlyPlugin(), tailwindcss()],
   resolve: {
     alias: {

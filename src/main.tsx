@@ -7,7 +7,7 @@ import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  BrowserRouter,
+  HashRouter,
   Navigate,
   Route,
   Routes,
@@ -32,6 +32,51 @@ function RouteLoading() {
     <div className="notebook-grain flex min-h-dvh items-center justify-center bg-background">
       <div className="animate-pulse font-display text-sm text-muted-foreground">
         جارٍ تجهيز الدفتر…
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Visible setup screen instead of a white page: shown when the app was built
+ * without VITE_CONVEX_URL (e.g. a GitHub Pages deploy where the secret was
+ * not set yet). Creating ConvexReactClient with an empty URL would throw and
+ * leave a blank screen, so we gate on it and explain what to do.
+ */
+function MissingConfigGate() {
+  return (
+    <div className="notebook-grain flex min-h-dvh items-center justify-center bg-background p-6">
+      <div className="index-card w-full max-w-lg p-6">
+        <h1 className="font-display text-lg font-bold">إعداد مطلوب قبل التشغيل</h1>
+        <p className="mt-2 text-[12px] leading-6 text-muted-foreground">
+          التطبيق بُني بدون رابط قاعدة البيانات{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+            VITE_CONVEX_URL
+          </code>{" "}
+          لذا لا يستطيع الاتصال بالخادم.
+        </p>
+        <ol className="mt-4 list-decimal space-y-2 ps-5 text-[12px] leading-6 text-foreground">
+          <li>
+            انسخ قيمة <span className="font-semibold">VITE_CONVEX_URL</span> من
+            صفحة Keys / الإعدادات في مشروعك على Freebuff (تبدأ بـ
+            <span dir="ltr" className="mx-1 text-[11px]">https://…convex.cloud</span>).
+          </li>
+          <li>
+            في GitHub: المستودع → <span className="font-semibold">Settings</span> →
+            Secrets and variables → Actions →
+            <span className="font-semibold"> New repository secret</span> باسم
+            <span dir="ltr" className="mx-1 text-[11px]">VITE_CONVEX_URL</span>
+            والقيمة المنسوخة.
+          </li>
+          <li>
+            في تبويب Actions اضغط على مهمة النشر ثم
+            <span className="font-semibold"> Re-run all jobs</span> — أو اضغط
+            أيقونة Push مرة أخرى.
+          </li>
+        </ol>
+        <p className="mt-4 text-[11px] leading-6 text-muted-foreground">
+          بعد اكتمال البناء الجديد سيعمل التطبيق مباشرة على هذا الرابط.
+        </p>
       </div>
     </div>
   );
@@ -95,8 +140,6 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-
 function RouteSyncer() {
   const location = useLocation();
   useEffect(() => {
@@ -120,47 +163,67 @@ function RouteSyncer() {
   return null;
 }
 
+function App() {
+  // Gate before creating the client: an empty URL makes ConvexReactClient throw.
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
+  if (!convexUrl) {
+    return <MissingConfigGate />;
+  }
+
+  const convex = new ConvexReactClient(convexUrl);
+
+  return (
+    <ConvexAuthProvider client={convex}>
+      {/* Hash routing works identically on the Freebuff preview, GitHub Pages
+          sub-paths (/#/app) and inside Capacitor native shells — no server
+          rewrite rules required. */}
+      <HashRouter>
+        <RouteSyncer />
+        <Suspense fallback={<RouteLoading />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route
+              path="/auth"
+              element={<AuthPage redirectAfterAuth="/app" />}
+            />
+
+            <Route
+              path="/app"
+              element={
+                <RequireAuth
+                  title="سجّل الدخول لعرض الخصومات القريبة"
+                  description="التطبيق يعرض عروض المتاجر المحيطة بك حسب موقعك، ويمنح التجار لوحة لإضافة خصوماتهم بالصور."
+                  redirectImmediately
+                >
+                  <AppShell />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<Nearby />} />
+              <Route path="favorites" element={<Favorites />} />
+              <Route path="store/:storeId" element={<StoreDetail />} />
+              <Route path="merchant" element={<Merchant />} />
+              <Route path="admin" element={<Admin />} />
+              <Route path="account" element={<Account />} />
+            </Route>
+
+            <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </HashRouter>
+      <Toaster />
+    </ConvexAuthProvider>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
-      <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
-          <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<AuthPage redirectAfterAuth="/app" />} />
-
-              <Route
-                path="/app"
-                element={
-                  <RequireAuth
-                    title="سجّل الدخول لعرض الخصومات القريبة"
-                    description="التطبيق يعرض عروض المتاجر المحيطة بك حسب موقعك، ويمنح التجار لوحة لإضافة خصوماتهم بالصور."
-                    redirectImmediately
-                  >
-                    <AppShell />
-                  </RequireAuth>
-                }
-              >
-                <Route index element={<Nearby />} />
-                <Route path="favorites" element={<Favorites />} />
-                <Route path="store/:storeId" element={<StoreDetail />} />
-                <Route path="merchant" element={<Merchant />} />
-                <Route path="admin" element={<Admin />} />
-                <Route path="account" element={<Account />} />
-              </Route>
-
-              <Route path="/dashboard" element={<Navigate to="/app" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-        <Toaster />
-      </ConvexAuthProvider>
+      <App />
     </RootErrorBoundary>
   </StrictMode>,
 );

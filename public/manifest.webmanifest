@@ -4,8 +4,8 @@
   "description": "تابع خصومات المتاجر القريبة منك على الخريطة، وأضف عروض متجرك بالصور.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/app",
-  "scope": "/",
+  "start_url": "./#/app",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#fbf6e8",
@@ -13,7 +13,7 @@
   "categories": ["shopping", "lifestyle", "travel"],
   "icons": [
     {
-      "src": "/logo.svg",
+      "src": "./logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -22,15 +22,15 @@
   "shortcuts": [
     {
       "name": "الخصومات القريبة",
-      "url": "/app"
+      "url": "./#/app"
     },
     {
       "name": "لوحة التاجر",
-      "url": "/app/merchant"
+      "url": "./#/app/merchant"
     },
     {
       "name": "المفضلة",
-      "url": "/app/favorites"
+      "url": "./#/app/favorites"
     }
   ]
 }
